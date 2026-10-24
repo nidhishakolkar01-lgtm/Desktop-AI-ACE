@@ -1,4 +1,4 @@
-// J.A.R.V.I.S. / God's Eye: Masterpiece Humanoid AI Companion (UE5 MetaHuman Android Standard)
+// ACE AI: Masterpiece Humanoid Companion (UE5 MetaHuman Android Standard)
 // - Sculpted Lunar Titanium & Ceramic Armor Chassis (Tesla Optimus / Figure 02 / MetaHuman Quality)
 // - Anatomical Facial Architecture: Brow Plate, Zygomatic Cheekbones, Mandible, Chin Cap, & Obsidian Visor
 // - Razor-Sharp Cybernetic Eyes: Concentric Cyan Reticles, Amber Telemetry Arcs, Real-Time Gaze-Tracking
@@ -772,7 +772,7 @@ class AvatarRenderer {
     // Header
     ctx.fillStyle = '#00f7ff';
     ctx.font = 'bold 20px "Courier New", monospace';
-    ctx.fillText('J.A.R.V.I.S. // HUMANOID NEURAL CORE', 24, 38);
+    ctx.fillText('ACE AI // HUMANOID NEURAL CORE', 24, 38);
 
     ctx.font = '15px "Courier New", monospace';
     ctx.fillStyle = '#ffaa33';

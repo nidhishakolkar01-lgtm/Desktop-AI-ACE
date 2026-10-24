@@ -1,7 +1,7 @@
-﻿{
-  "name": "desktop-ai-companion",
+{
+  "name": "ace-ai",
   "version": "1.0.0",
-  "description": "On-device 3D AI Desktop Companion with Lip-Sync and Gaze Tracking",
+  "description": "ACE AI - On-device 3D Humanoid Desktop Companion with Telemetry, Lip-Sync, and Gaze Tracking",
   "main": "main.js",
   "scripts": {
     "start": "electron ."

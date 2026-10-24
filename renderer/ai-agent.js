@@ -1,6 +1,6 @@
-// Low-Latency JARVIS AI Agent with Parallel Multi-Tool Launcher & Real Hardware Telemetry
+// Low-Latency ACE AI Agent with Parallel Multi-Tool Launcher & Real Hardware Telemetry
 
-function startJarvisApp() {
+function startAceApp() {
   const avatar = window.avatar || new window.AvatarRenderer('canvas3d');
   window.avatar = avatar;
 
@@ -153,7 +153,7 @@ function startJarvisApp() {
     isListening = true;
     avatar.setAgentState('listening');
     micBtn.classList.add('listening');
-    appendBubble("JARVIS listening to microphone...", 'bot');
+    appendBubble("ACE AI listening to microphone...", 'bot');
 
     try {
       if (window.electronAPI && window.electronAPI.listenMic) {
@@ -217,7 +217,7 @@ function startJarvisApp() {
     const botBubble = appendBubble('', 'bot');
     const selectedModel = modelSelect.value || 'qwen:latest';
 
-    const systemPrompt = `You are J.A.R.V.I.S., Tony Stark's advanced AI companion and tactical operating system.
+    const systemPrompt = `You are ACE AI, the advanced AI desktop companion and tactical operating system.
 REAL LAPTOP TELEMETRY:
 - CPU: ${realTelemetry.CPU} (${realTelemetry.CPULoad}% Load)
 - Battery: ${realTelemetry.BatteryPercent}% (${realTelemetry.BatteryCharging ? 'Charging' : 'Discharging'})
@@ -229,11 +229,11 @@ CAPABILITIES & MULTI-APP LAUNCHING:
 You can launch ANY application, program, game, website, or tool on Windows.
 You can open MULTIPLE applications simultaneously! For each application to open, include [TOOL:OPEN:app_name].
 Examples:
-- "Open Chrome and Spotify": "Right away, sir. Opening Chrome and Spotify now. [TOOL:OPEN:chrome] [TOOL:OPEN:spotify]"
-- "Launch Calculator, Notepad, and YouTube": "Executing now, sir. [TOOL:OPEN:calc] [TOOL:OPEN:notepad] [TOOL:OPEN:youtube]"
-- "Open VS Code and Terminal": "On it, sir. [TOOL:OPEN:code] [TOOL:OPEN:terminal]"
+- "Open Chrome and Spotify": "Right away. Opening Chrome and Spotify now. [TOOL:OPEN:chrome] [TOOL:OPEN:spotify]"
+- "Launch Calculator, Notepad, and YouTube": "Executing now. [TOOL:OPEN:calc] [TOOL:OPEN:notepad] [TOOL:OPEN:youtube]"
+- "Open VS Code and Terminal": "On it. [TOOL:OPEN:code] [TOOL:OPEN:terminal]"
 
-Be concise, witty, loyal, and articulate like J.A.R.V.I.S. (1-2 sentences). Address the user as "sir".`;
+Be concise, witty, loyal, and articulate like ACE AI (1-2 sentences). Address the user with respect (e.g. "sir").`;
 
     try {
       const response = await fetch('http://localhost:11434/api/generate', {
@@ -241,7 +241,7 @@ Be concise, witty, loyal, and articulate like J.A.R.V.I.S. (1-2 sentences). Addr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: selectedModel,
-          prompt: `${systemPrompt}\n\nUser: ${userText}\nF.R.I.D.A.Y.:`,
+          prompt: `${systemPrompt}\n\nUser: ${userText}\nACE AI:`,
           stream: true
         })
       });
@@ -320,7 +320,7 @@ Be concise, witty, loyal, and articulate like J.A.R.V.I.S. (1-2 sentences). Addr
 
 function waitForAvatar() {
   if (window.AvatarRenderer) {
-    startJarvisApp();
+    startAceApp();
   } else {
     setTimeout(waitForAvatar, 25);
   }

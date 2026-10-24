@@ -1,8 +1,8 @@
-# J.A.R.V.I.S. // 3D Humanoid AI Desktop Companion
+# ACE AI // 3D Humanoid Desktop Companion
 
 An interactive, on-device 3D AI companion rendered with Three.js and Electron. Built with real-time hardware telemetry diagnostics, dynamic voice synthesis, microphone voice input, gaze tracking, and local LLM integration via Ollama.
 
-![J.A.R.V.I.S. Screenshot](live_screen_capture.png)
+![ACE AI Screenshot](live_screen_capture.png)
 
 ## Features
 
@@ -51,7 +51,7 @@ An interactive, on-device 3D AI companion rendered with Three.js and Electron. B
 
 - **Mouse Gaze**: Move cursor across the screen — the humanoid's eyes and head tilt smoothly follow your cursor.
 - **Voice / Text Chat**: Use the bottom dock to type commands or click the microphone icon to speak.
-- **Application Launcher**: Ask J.A.R.V.I.S. to launch Windows programs (e.g. Chrome, Spotify, VS Code, Notepad).
+- **Application Launcher**: Ask ACE AI to launch Windows programs (e.g. Chrome, Spotify, VS Code, Notepad).
 - **Exit**: Click the `✕` button on the top-right HUD to minimize or exit.
 
 ## Architecture

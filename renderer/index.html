@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>J.A.R.V.I.S. 3D AI Live Desktop</title>
+  <link rel="stylesheet" href="styles.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "../node_modules/three/build/three.module.js",
+      "three/addons/": "../node_modules/three/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="avatar.js"></script>
+  <script src="ai-agent.js"></script>
+</head>
+<body>
+  <div id="wallpaper-root">
+    <canvas id="canvas3d"></canvas>
+
+    <div id="hud-layer">
+      <!-- Top Bar -->
+      <div class="top-bar">
+        <div class="clock-widget">
+          <div class="time-text" id="live-time">--:--:--</div>
+          <div class="date-text" id="live-date">Syncing hardware telemetry...</div>
+        </div>
+
+        <div class="system-widget">
+          <div class="sys-card">
+            <span class="sys-label">CPU LOAD</span>
+            <span class="sys-val" id="sys-cpu">--%</span>
+          </div>
+          <div class="sys-card">
+            <span class="sys-label">BATTERY</span>
+            <span class="sys-val" id="sys-battery">--%</span>
+          </div>
+          <div class="sys-card">
+            <span class="sys-label">FREE RAM</span>
+            <span class="sys-val" id="sys-ram">-- GB</span>
+          </div>
+          <div class="sys-card">
+            <span class="sys-label">FREE DISK</span>
+            <span class="sys-val" id="sys-disk">-- GB</span>
+          </div>
+          <button class="win-exit-btn" id="exit-btn" title="Exit Wallpaper">✕</button>
+        </div>
+      </div>
+
+      <!-- Dialogue Bubble Overlay -->
+      <div id="dialogue-container">
+        <div class="bubble bot" id="main-bubble">
+          At your service, sir. Systems online and fully operational. How can I assist you today?
+        </div>
+      </div>
+
+      <!-- Bottom Interactive Dock -->
+      <div class="bottom-dock">
+        <div class="dock-controls">
+          <div>
+            <label for="model-select">Neural Core: </label>
+            <select id="model-select">
+              <option value="qwen:latest" selected>Qwen (Fast / Low Latency)</option>
+              <option value="llama3.1:latest">Llama 3.1 (8B)</option>
+              <option value="llava:latest">LLaVA (Vision)</option>
+            </select>
+          </div>
+
+          <div class="waveform" id="waveform">
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+          </div>
+        </div>
+
+        <div class="input-row">
+          <button id="mic-btn" title="Click to Speak into Microphone">🎙️</button>
+          <input type="text" id="text-input" placeholder="Speak or type a command (e.g. 'Open Chrome and Spotify')..." autocomplete="off">
+          <button id="send-btn" title="Send">➤</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

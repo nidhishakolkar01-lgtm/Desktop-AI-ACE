@@ -1,0 +1,15 @@
+﻿{
+  "name": "desktop-ai-companion",
+  "version": "1.0.0",
+  "description": "On-device 3D AI Desktop Companion with Lip-Sync and Gaze Tracking",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "electron": "^28.2.0"
+  }
+}

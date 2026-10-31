@@ -12,5 +12,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   lockPC: () => ipcRenderer.invoke('system:lock-pc'),
   captureScreen: () => ipcRenderer.invoke('system:capture-screen'),
   fetchWeather: (location) => ipcRenderer.invoke('system:fetch-weather', location),
-  webSearch: (query) => ipcRenderer.invoke('system:web-search', query)
+  webSearch: (query) => ipcRenderer.invoke('system:web-search', query),
+  toggleMode: () => ipcRenderer.invoke('window:toggle-mode'),
+  scanScreen: () => ipcRenderer.invoke('system:scan-screen'),
+  killProcess: (name) => ipcRenderer.invoke('system:kill-process', name)
 });

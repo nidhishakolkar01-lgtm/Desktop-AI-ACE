@@ -1,4 +1,4 @@
-﻿try {
+try {
     $battery = Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue | Select-Object -First 1
     $cpu = Get-CimInstance Win32_Processor | Select-Object -First 1
     $os = Get-CimInstance Win32_OperatingSystem
@@ -20,9 +20,13 @@
     $totalRam = [math]::Round($os.TotalVisibleMemorySize / 1MB, 2)
     $freeDisk = [math]::Round($drive.Free / 1GB, 2)
 
+    $topProc = Get-Process | Sort-Object CPU -Descending | Select-Object -First 1
+    $topProcName = if ($topProc) { $topProc.ProcessName } else { "Idle" }
+
     $obj = [PSCustomObject]@{
         CPU = if ($cpu) { $cpu.Name.Trim() } else { "AMD Ryzen AI" }
         CPULoad = $cpuLoad
+        TopProcess = $topProcName
         BatteryPercent = $batteryPercent
         BatteryCharging = $isCharging
         FreeRamGB = $freeRam

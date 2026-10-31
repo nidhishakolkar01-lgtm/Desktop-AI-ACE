@@ -1,10 +1,11 @@
-const { app, BrowserWindow, ipcMain, screen, shell, session } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, shell, session, desktopCapturer } = require('electron');
 const path = require('path');
 const { exec } = require('child_process');
 const os = require('os');
 const fs = require('fs');
 
 let mainWindow;
+let isWidgetMode = false;
 const rootDir = __dirname;
 
 function createWindow() {
@@ -95,6 +96,34 @@ ipcMain.handle('window-control', (event, action) => {
       mainWindow.close();
       break;
   }
+});
+
+ipcMain.handle('window:toggle-mode', () => {
+  if (!mainWindow) return { mode: 'fullscreen' };
+  isWidgetMode = !isWidgetMode;
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width, height } = primaryDisplay.bounds;
+
+  if (isWidgetMode) {
+    const w = 460;
+    const h = 640;
+    mainWindow.setAlwaysOnTop(true, 'screen-saver');
+    mainWindow.setBounds({
+      x: width - w - 24,
+      y: height - h - 48,
+      width: w,
+      height: h
+    });
+  } else {
+    mainWindow.setAlwaysOnTop(false);
+    mainWindow.setBounds({
+      x: 0,
+      y: 0,
+      width: width,
+      height: height
+    });
+  }
+  return { mode: isWidgetMode ? 'widget' : 'fullscreen' };
 });
 
 ipcMain.handle('system:get-real-telemetry', () => {
@@ -250,4 +279,27 @@ ipcMain.handle('system:web-search', async (event, query) => {
   } catch (e) {
     return { success: false, error: e.message };
   }
+});
+
+ipcMain.handle('system:scan-screen', async () => {
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: { width: 1280, height: 720 }
+    });
+    if (sources && sources.length > 0) {
+      const base64 = sources[0].thumbnail.toJPEG(75).toString('base64');
+      return { success: true, base64 };
+    }
+    return { success: false, error: 'No display sources detected.' };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('system:kill-process', (event, procName) => {
+  if (!procName) return { success: false };
+  const safeName = procName.replace(/[^a-zA-Z0-9_\-\.]/g, '');
+  exec(`taskkill /F /IM "${safeName}.exe"`, () => {});
+  return { success: true };
 });

@@ -28,6 +28,12 @@ function startAceApp() {
   const chipMedia = document.getElementById('chip-media');
   const chipScreenshot = document.getElementById('chip-screenshot');
   const chipLock = document.getElementById('chip-lock');
+  const chipVision = document.getElementById('chip-vision');
+  const modeBtn = document.getElementById('mode-btn');
+  const laserScanLine = document.getElementById('laser-scan-line');
+
+  let lastCpuAlertTime = 0;
+  let lastBatteryAlertTime = 0;
 
   // Cached Real Telemetry
   let realTelemetry = {
@@ -60,6 +66,22 @@ function startAceApp() {
             sysBattery.textContent = data.BatteryPercent >= 0 ? `${data.BatteryPercent}% ${chargeText}` : 'AC';
           }
           if (sysDisk) sysDisk.textContent = `${data.FreeDiskGB} GB`;
+
+          // Autonomous Watchdog Core (Proactive System Guardian)
+          if (data.CPULoad > 85 && (Date.now() - lastCpuAlertTime > 90000)) {
+            lastCpuAlertTime = Date.now();
+            const topProc = data.TopProcess || 'system task';
+            appendBubble(`⚠️ High load alert: ${data.CPULoad}% CPU usage detected (${topProc}).`, 'bot');
+            if (window.aceSFX) window.aceSFX.playAlert();
+            queueSpeech(`Sir, high CPU load detected at ${data.CPULoad} percent, dominated by ${topProc}.`);
+          }
+
+          if (data.BatteryPercent > 0 && data.BatteryPercent <= 15 && !data.BatteryCharging && (Date.now() - lastBatteryAlertTime > 180000)) {
+            lastBatteryAlertTime = Date.now();
+            appendBubble(`🪫 Critical Battery Alert: ${data.BatteryPercent}% remaining.`, 'bot');
+            if (window.aceSFX) window.aceSFX.playAlert();
+            queueSpeech(`Sir, battery level is critical at ${data.BatteryPercent} percent. Power connection recommended.`);
+          }
         }
       } catch (e) {
         console.error('Telemetry error:', e);
@@ -125,22 +147,34 @@ function startAceApp() {
     utterance.onstart = () => {
       ticker = setInterval(() => {
         if (!isPlayingSpeech) return;
-        const t = Date.now() * 0.02;
-        const energy = 0.25 + (Math.sin(t * 1.8) * 0.3) + (Math.cos(t * 3.5) * 0.25);
-        const clamped = Math.max(0.08, Math.min(0.9, energy));
-        avatar.setRealAudioEnergy(clamped);
-        animateWaveform(clamped);
-      }, 35);
+        let bands = { low: 0, mid: 0, high: 0 };
+        if (window.aceSFX && window.aceSFX.getSpectralBands) {
+          bands = window.aceSFX.getSpectralBands();
+        }
+        const t = Date.now() * 0.025;
+        const cadence = (Math.sin(t * 2.2) * 0.22) + (Math.cos(t * 4.5) * 0.18);
+        const midEnergy = Math.max(0.12, Math.min(0.95, bands.mid + 0.35 + cadence));
+        const lowEnergy = Math.max(0.08, Math.min(0.85, bands.low + 0.25 + cadence * 0.8));
+        const highEnergy = Math.max(0.08, Math.min(0.85, bands.high + 0.20 + cadence * 0.5));
+
+        if (avatar.setSpectralFrequencies) {
+          avatar.setSpectralFrequencies(lowEnergy, midEnergy, highEnergy);
+        }
+        avatar.setRealAudioEnergy(midEnergy);
+        animateWaveform(midEnergy);
+      }, 30);
     };
 
     utterance.onend = () => {
       clearInterval(ticker);
+      if (avatar.setSpectralFrequencies) avatar.setSpectralFrequencies(0, 0, 0);
       avatar.setRealAudioEnergy(0);
       processNextSpeech();
     };
 
     utterance.onerror = () => {
       clearInterval(ticker);
+      if (avatar.setSpectralFrequencies) avatar.setSpectralFrequencies(0, 0, 0);
       avatar.setRealAudioEnergy(0);
       processNextSpeech();
     };
@@ -367,6 +401,106 @@ function startAceApp() {
     });
   }
 
+  // Vision Scanner Chip
+  if (chipVision) {
+    chipVision.addEventListener('click', () => {
+      executeScreenVisionScan();
+    });
+  }
+
+  // Dual Viewport Mode Toggle Button
+  if (modeBtn) {
+    modeBtn.addEventListener('click', async () => {
+      if (window.aceSFX) window.aceSFX.playConfirm();
+      if (window.electronAPI && window.electronAPI.toggleMode) {
+        const res = await window.electronAPI.toggleMode();
+        const isWidget = (res && res.mode === 'widget');
+        document.body.classList.toggle('widget-mode', isWidget);
+        modeBtn.textContent = isWidget ? '🖥️ Full' : '🪟 Mode';
+        appendBubble(isWidget ? 'Switched to Floating Hologram Widget.' : 'Returned to Fullscreen Command Center.', 'bot');
+      }
+    });
+  }
+
+  // Multimodal Screen Vision Execution Function (LLaVA)
+  async function executeScreenVisionScan(customPrompt) {
+    if (laserScanLine) laserScanLine.classList.add('scanning');
+    if (window.aceSFX) window.aceSFX.playThinking();
+    avatar.setAgentState('thinking');
+
+    appendBubble("👁️ Optical Scanner engaged. Scanning active display buffer...", 'bot');
+
+    try {
+      if (!window.electronAPI || !window.electronAPI.scanScreen) {
+        throw new Error("Screen capture API unavailable.");
+      }
+      const capture = await window.electronAPI.scanScreen();
+      if (!capture || !capture.success || !capture.base64) {
+        throw new Error(capture?.error || "Failed to capture desktop frame.");
+      }
+
+      const botBubble = appendBubble("Analyzing with Neural Vision Core (LLaVA)...", 'bot');
+      const promptText = customPrompt || "Analyze this desktop screen. Explain what the user is working on, describe any code, applications, text, or errors visible, and provide useful advice. Be concise and articulate like ACE AI. Address the user as sir.";
+
+      const response = await fetch('http://localhost:11434/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'llava:latest',
+          prompt: `You are ACE AI, a tactical operating system. ${promptText}`,
+          images: [capture.base64],
+          stream: true
+        })
+      });
+
+      if (!response.ok) throw new Error(`Ollama Vision Error: ${response.statusText}`);
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let fullReply = '';
+      let sentenceBuffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const parsed = JSON.parse(line);
+            if (parsed.response) {
+              fullReply += parsed.response;
+              sentenceBuffer += parsed.response;
+              botBubble.textContent = fullReply;
+              dialogueContainer.scrollTop = dialogueContainer.scrollHeight;
+
+              if (/[.!?\n]/.test(parsed.response) && sentenceBuffer.trim().length > 15) {
+                queueSpeech(sentenceBuffer.trim());
+                sentenceBuffer = '';
+              }
+            }
+          } catch (e) {}
+        }
+      }
+
+      if (sentenceBuffer.trim().length > 0) {
+        queueSpeech(sentenceBuffer.trim());
+      }
+
+      if (window.aceSFX) window.aceSFX.playConfirm();
+
+    } catch (err) {
+      console.error('Vision analysis error:', err);
+      appendBubble(`Optical sensor error: ${err.message}`, 'bot');
+      queueSpeech("Optical scanner encountered interference analyzing display buffer.");
+    } finally {
+      if (laserScanLine) laserScanLine.classList.remove('scanning');
+      avatar.setAgentState('idle');
+    }
+  }
+
   // 7. STREAMING OLLAMA GENERATION WITH DIRECT SHORTCUTS
   async function handleUserMessage(userText) {
     if (!userText.trim()) return;
@@ -446,6 +580,11 @@ function startAceApp() {
           return;
         }
       }
+    }
+
+    if (/^(scan\s*(my\s*)?screen|look\s*at\s*(my\s*)?screen|what('?s|\s+is)\s*on\s*(my\s*)?screen|analyze\s*(my\s*)?screen|read\s*(my\s*)?screen)/i.test(lower)) {
+      executeScreenVisionScan(userText);
+      return;
     }
 
     // Default: Local LLM Processing via Ollama

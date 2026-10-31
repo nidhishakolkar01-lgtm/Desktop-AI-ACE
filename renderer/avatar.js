@@ -82,6 +82,13 @@ class AvatarRenderer {
     this.animTime = 0;
     this.clock = new THREE.Clock();
     this.realAudioEnergy = 0;
+    this.spectralLow = 0;
+    this.spectralMid = 0;
+    this.spectralHigh = 0;
+    this.orbitRotation = { x: 0, y: 0 };
+    this.targetOrbitRotation = { x: 0, y: 0 };
+    this.isOrbiting = false;
+    this.orbitStart = { x: 0, y: 0 };
 
     this.initScene();
     this.buildLighting();
@@ -90,6 +97,12 @@ class AvatarRenderer {
     this.createHolographicHUD();
     this.startTracking();
     this.animate();
+  }
+
+  setSpectralFrequencies(low, mid, high) {
+    this.spectralLow = Math.max(0, Math.min(1.0, low));
+    this.spectralMid = Math.max(0, Math.min(1.0, mid));
+    this.spectralHigh = Math.max(0, Math.min(1.0, high));
   }
 
   setRealAudioEnergy(energy) {
@@ -808,6 +821,36 @@ class AvatarRenderer {
       const ny = -(e.clientY / window.innerHeight) * 2 + 1;
       this.targetGaze.x = THREE.MathUtils.clamp(nx, -1, 1);
       this.targetGaze.y = THREE.MathUtils.clamp(ny, -1, 1);
+
+      if (this.isOrbiting) {
+        const dx = e.clientX - this.orbitStart.x;
+        const dy = e.clientY - this.orbitStart.y;
+        this.targetOrbitRotation.y += dx * 0.008;
+        this.targetOrbitRotation.x += dy * 0.005;
+        this.targetOrbitRotation.x = THREE.MathUtils.clamp(this.targetOrbitRotation.x, -0.4, 0.4);
+        this.orbitStart = { x: e.clientX, y: e.clientY };
+      }
+    });
+
+    window.addEventListener('mousedown', (e) => {
+      if (e.button === 2 || e.button === 1) { // Right or middle click to orbit
+        this.isOrbiting = true;
+        this.orbitStart = { x: e.clientX, y: e.clientY };
+      }
+    });
+
+    window.addEventListener('mouseup', (e) => {
+      if (e.button === 2 || e.button === 1) {
+        this.isOrbiting = false;
+      }
+    });
+
+    window.addEventListener('contextmenu', (e) => {
+      e.preventDefault(); // Prevent context menu during 3D inspection
+    });
+
+    window.addEventListener('dblclick', () => {
+      this.targetOrbitRotation = { x: 0, y: 0 }; // Reset orientation on double click
     });
   }
 
@@ -854,9 +897,17 @@ class AvatarRenderer {
       this.rightEyePupil.position.y = eyeY;
     }
 
+    // Orbit Smoothing
+    this.orbitRotation.x += (this.targetOrbitRotation.x - this.orbitRotation.x) * 0.10;
+    this.orbitRotation.y += (this.targetOrbitRotation.y - this.orbitRotation.y) * 0.10;
+    if (this.characterGroup) {
+      this.characterGroup.rotation.y = this.orbitRotation.y;
+      this.characterGroup.rotation.x = this.orbitRotation.x;
+    }
+
     // 3. Flush Quantum Sternum Nexus Counter-Rotation & Pulse
     if (this.nexusCore) {
-      const pulse = 1.0 + Math.sin(this.animTime * 3.0) * 0.10 + this.realAudioEnergy * 0.20;
+      const pulse = 1.0 + Math.sin(this.animTime * 3.0) * 0.08 + this.spectralLow * 0.35 + this.realAudioEnergy * 0.15;
       this.nexusCore.scale.set(pulse, pulse, pulse);
     }
     if (this.nexusRingA) {
@@ -866,9 +917,10 @@ class AvatarRenderer {
       this.nexusRingB.rotation.z -= delta * 0.95;
     }
 
-    // 4. Audio-Reactive Acoustic Speech Resonator & Mandible
+    // 4. Audio-Reactive Acoustic Speech Resonator & Mandible (FFT Spectral Formants)
+    const activeVocalEnergy = Math.max(this.spectralMid * 1.35, this.realAudioEnergy);
     const targetMouthOpen = (this.agentState === 'speaking')
-      ? 0.4 + this.realAudioEnergy * 0.6
+      ? Math.max(0.35, activeVocalEnergy * 0.95)
       : (this.agentState === 'listening' ? 0.08 : 0);
 
     if (this.mouthResonator) {

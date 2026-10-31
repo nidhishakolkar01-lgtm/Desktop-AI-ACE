@@ -128,6 +128,24 @@ body, html {
   border-color: #ff3c3c;
 }
 
+.win-mode-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #8a94a6;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.win-mode-btn:hover {
+  background: rgba(255, 119, 0, 0.25);
+  color: #ffaa33;
+  border-color: #ff7700;
+}
+
 /* Floating Dialogue Bubble */
 #dialogue-container {
   position: absolute;
@@ -336,4 +354,61 @@ body, html {
 #send-btn:hover {
   background: #ff8c1a;
   box-shadow: 0 0 18px rgba(255, 119, 0, 0.7);
+}
+
+/* Holographic Laser Scan Line */
+#laser-scan-line {
+  position: absolute;
+  top: -10px;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #00f7ff, #ffffff, #00f7ff, transparent);
+  box-shadow: 0 0 18px #00f7ff, 0 0 35px #00f7ff;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0;
+}
+
+#laser-scan-line.scanning {
+  opacity: 1;
+  animation: laser-sweep 2s ease-in-out infinite;
+}
+
+@keyframes laser-sweep {
+  0% { top: 0%; opacity: 0.8; }
+  50% { top: 100%; opacity: 1; }
+  100% { top: 0%; opacity: 0.8; }
+}
+
+/* Compact Transparent Floating Widget Mode */
+body.widget-mode #hud-layer {
+  padding: 12px 14px;
+}
+
+body.widget-mode .top-bar .clock-widget,
+body.widget-mode .top-bar .system-widget .sys-card {
+  display: none;
+}
+
+body.widget-mode #dialogue-container {
+  top: 50px;
+  right: 14px;
+  width: calc(100% - 28px);
+  max-height: 220px;
+}
+
+body.widget-mode .bottom-dock {
+  width: 100%;
+  max-width: 100%;
+  padding: 8px 12px;
+}
+
+body.widget-mode .quick-actions {
+  gap: 4px;
+}
+
+body.widget-mode .action-chip {
+  font-size: 9.5px;
+  padding: 4px 7px;
 }

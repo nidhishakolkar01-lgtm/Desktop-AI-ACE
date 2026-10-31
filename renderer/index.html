@@ -19,6 +19,7 @@
 </head>
 <body>
   <div id="wallpaper-root">
+    <div id="laser-scan-line"></div>
     <canvas id="canvas3d"></canvas>
 
     <div id="hud-layer">
@@ -46,6 +47,7 @@
             <span class="sys-label">FREE DISK</span>
             <span class="sys-val" id="sys-disk">-- GB</span>
           </div>
+          <button class="win-mode-btn" id="mode-btn" title="Toggle Floating Hologram / Fullscreen Mode">🪟 Mode</button>
           <button class="win-exit-btn" id="exit-btn" title="Exit Wallpaper">✕</button>
         </div>
       </div>
@@ -81,6 +83,7 @@
         </div>
 
         <div class="quick-actions">
+          <button class="action-chip" id="chip-vision" title="Scan & Analyze Current Screen with Vision AI">👁️ Scan Screen</button>
           <button class="action-chip" id="chip-weather" title="Check Current Weather">🌤️ Weather</button>
           <button class="action-chip" id="chip-vol-up" title="Volume Up">🔊 Vol +</button>
           <button class="action-chip" id="chip-vol-down" title="Volume Down">🔉 Vol -</button>

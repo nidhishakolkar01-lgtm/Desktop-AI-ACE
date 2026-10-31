@@ -5,6 +5,8 @@ class AceSoundEffects {
   constructor() {
     this.ctx = null;
     this.enabled = true;
+    this.analyser = null;
+    this.analyserData = null;
   }
 
   init() {
@@ -15,6 +17,29 @@ class AceSoundEffects {
     if (this.ctx.state === 'suspended') {
       this.ctx.resume();
     }
+    if (!this.analyser) {
+      this.analyser = this.ctx.createAnalyser();
+      this.analyser.fftSize = 128;
+      this.analyserData = new Uint8Array(this.analyser.frequencyBinCount);
+    }
+  }
+
+  getSpectralBands() {
+    if (!this.analyser || !this.analyserData) return { low: 0, mid: 0, high: 0 };
+    this.analyser.getByteFrequencyData(this.analyserData);
+    const bins = this.analyserData;
+    let lowSum = 0;
+    for (let i = 0; i < 4; i++) lowSum += bins[i];
+    let midSum = 0;
+    for (let i = 4; i < 20; i++) midSum += bins[i];
+    let highSum = 0;
+    for (let i = 20; i < 50; i++) highSum += bins[i];
+
+    return {
+      low: lowSum / (4 * 255),
+      mid: midSum / (16 * 255),
+      high: highSum / (30 * 255)
+    };
   }
 
   // Sci-Fi Activation / Awakening Chime

@@ -147,3 +147,107 @@ ipcMain.handle('system:open-app', (event, appName) => {
   exec(`start "" "${appName}"`);
   return { success: true };
 });
+
+ipcMain.handle('system:volume-control', (event, action) => {
+  return new Promise((resolve) => {
+    let psCmd = '';
+    if (action === 'up') {
+      psCmd = '1..5 | ForEach-Object { (New-Object -ComObject Wscript.Shell).SendKeys([char]175) }';
+    } else if (action === 'down') {
+      psCmd = '1..5 | ForEach-Object { (New-Object -ComObject Wscript.Shell).SendKeys([char]174) }';
+    } else if (action === 'mute') {
+      psCmd = '(New-Object -ComObject Wscript.Shell).SendKeys([char]173)';
+    }
+    if (psCmd) {
+      exec(`powershell -NoProfile -Command "${psCmd}"`, () => resolve({ success: true }));
+    } else {
+      resolve({ success: false });
+    }
+  });
+});
+
+ipcMain.handle('system:media-control', (event, action) => {
+  return new Promise((resolve) => {
+    let psCmd = '';
+    if (action === 'playpause') {
+      psCmd = '(New-Object -ComObject Wscript.Shell).SendKeys([char]179)';
+    } else if (action === 'next') {
+      psCmd = '(New-Object -ComObject Wscript.Shell).SendKeys([char]176)';
+    } else if (action === 'prev') {
+      psCmd = '(New-Object -ComObject Wscript.Shell).SendKeys([char]177)';
+    }
+    if (psCmd) {
+      exec(`powershell -NoProfile -Command "${psCmd}"`, () => resolve({ success: true }));
+    } else {
+      resolve({ success: false });
+    }
+  });
+});
+
+ipcMain.handle('system:lock-pc', () => {
+  exec('rundll32.exe user32.dll,LockWorkStation');
+  return { success: true };
+});
+
+ipcMain.handle('system:capture-screen', async () => {
+  try {
+    if (!mainWindow) return { success: false };
+    const image = await mainWindow.webContents.capturePage();
+    const picturesDir = app.getPath('pictures') || app.getPath('documents');
+    const filename = `ACE_AI_Screenshot_${Date.now()}.png`;
+    const fullPath = path.join(picturesDir, filename);
+    fs.writeFileSync(fullPath, image.toPNG());
+    return { success: true, path: fullPath };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('system:fetch-weather', async (event, location) => {
+  try {
+    const loc = location ? encodeURIComponent(location.trim()) : '';
+    const response = await fetch(`https://wttr.in/${loc}?format=j1`, { signal: AbortSignal.timeout(6000) });
+    if (!response.ok) return { success: false };
+    const data = await response.json();
+    const current = data.current_condition?.[0];
+    const nearest = data.nearest_area?.[0]?.areaName?.[0]?.value || location || 'Local Area';
+    if (!current) return { success: false };
+    return {
+      success: true,
+      area: nearest,
+      tempC: current.temp_C,
+      tempF: current.temp_F,
+      desc: current.weatherDesc?.[0]?.value || 'Clear',
+      humidity: current.humidity,
+      windSpeedKmph: current.windspeedKmph
+    };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('system:web-search', async (event, query) => {
+  try {
+    if (!query) return { success: false };
+    const q = encodeURIComponent(query.trim());
+    const response = await fetch(`https://api.duckduckgo.com/?q=${q}&format=json&no_html=1&skip_disambig=1`, { signal: AbortSignal.timeout(6000) });
+    if (response.ok) {
+      const data = await response.json();
+      const abstract = data.AbstractText || data.Answer || data.Definition;
+      if (abstract) {
+        return { success: true, result: abstract, source: data.AbstractSource || 'DuckDuckGo' };
+      }
+    }
+    // Fallback Wikipedia summary
+    const wikiResp = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${q}`, { signal: AbortSignal.timeout(6000) });
+    if (wikiResp.ok) {
+      const wikiData = await wikiResp.json();
+      if (wikiData.extract) {
+        return { success: true, result: wikiData.extract, source: 'Wikipedia' };
+      }
+    }
+    return { success: false };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});

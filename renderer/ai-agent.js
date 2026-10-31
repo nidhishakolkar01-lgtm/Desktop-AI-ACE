@@ -20,6 +20,15 @@ function startAceApp() {
   const modelSelect = document.getElementById('model-select');
   const waveBars = document.querySelectorAll('.wave-bar');
 
+  // Quick Action Chips
+  const chipWeather = document.getElementById('chip-weather');
+  const chipVolUp = document.getElementById('chip-vol-up');
+  const chipVolDown = document.getElementById('chip-vol-down');
+  const chipVolMute = document.getElementById('chip-vol-mute');
+  const chipMedia = document.getElementById('chip-media');
+  const chipScreenshot = document.getElementById('chip-screenshot');
+  const chipLock = document.getElementById('chip-lock');
+
   // Cached Real Telemetry
   let realTelemetry = {
     CPU: "AMD Ryzen AI 5 340",
@@ -146,15 +155,60 @@ function startAceApp() {
     });
   }
 
-  // 4. REAL MICROPHONE LISTENING VIA WINDOWS API
+  // 4. REAL MICROPHONE LISTENING WITH SFX
   micBtn.addEventListener('click', async () => {
     if (isListening) return;
 
+    if (window.aceSFX) window.aceSFX.playListening();
     isListening = true;
     avatar.setAgentState('listening');
     micBtn.classList.add('listening');
-    appendBubble("ACE AI listening to microphone...", 'bot');
+    appendBubble("ACE AI listening...", 'bot');
 
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      try {
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          isListening = false;
+          micBtn.classList.remove('listening');
+          if (transcript && transcript.trim()) {
+            textInput.value = transcript;
+            handleUserMessage(transcript);
+          } else {
+            avatar.setAgentState('idle');
+          }
+        };
+
+        recognition.onerror = async () => {
+          // Fallback to electron listenMic
+          fallbackListenMic();
+        };
+
+        recognition.onend = () => {
+          if (isListening) {
+            isListening = false;
+            micBtn.classList.remove('listening');
+            avatar.setAgentState('idle');
+          }
+        };
+
+        recognition.start();
+        return;
+      } catch (e) {
+        // Fallback below
+      }
+    }
+
+    fallbackListenMic();
+  });
+
+  async function fallbackListenMic() {
     try {
       if (window.electronAPI && window.electronAPI.listenMic) {
         const recognized = await window.electronAPI.listenMic();
@@ -174,34 +228,146 @@ function startAceApp() {
       avatar.setAgentState('idle');
       micBtn.classList.remove('listening');
     }
-  });
+  }
 
-  // 5. PARALLEL MULTI-TOOL EXECUTION
-  function executeToolsInText(text) {
+  // 5. EXPANDED NATIVE OS TOOL EXECUTION
+  async function executeToolsInText(text) {
+    // 1. App Launching
     const appMatches = [...text.matchAll(/\[TOOL:(?:OPEN|OPEN_APP|LAUNCH):(.+?)\]/gi)];
     const appsToOpen = [];
-
     appMatches.forEach((m) => {
       if (m[1]) {
         const app = m[1].trim();
-        if (app && !appsToOpen.includes(app)) {
-          appsToOpen.push(app);
-        }
+        if (app && !appsToOpen.includes(app)) appsToOpen.push(app);
       }
     });
-
     if (appsToOpen.length > 0 && window.electronAPI && window.electronAPI.launchApps) {
       window.electronAPI.launchApps(appsToOpen);
+      if (window.aceSFX) window.aceSFX.playConfirm();
     }
 
-    let cleanText = text.replace(/\[TOOL:(?:OPEN|OPEN_APP|LAUNCH):.+?\]/gi, '');
+    // 2. Volume Controls
+    const volMatch = text.match(/\[TOOL:VOLUME:(up|down|mute)\]/i);
+    if (volMatch && window.electronAPI && window.electronAPI.volumeControl) {
+      window.electronAPI.volumeControl(volMatch[1].toLowerCase());
+      if (window.aceSFX) window.aceSFX.playConfirm();
+    }
+
+    // 3. Media Controls
+    const mediaMatch = text.match(/\[TOOL:MEDIA:(playpause|next|prev)\]/i);
+    if (mediaMatch && window.electronAPI && window.electronAPI.mediaControl) {
+      window.electronAPI.mediaControl(mediaMatch[1].toLowerCase());
+      if (window.aceSFX) window.aceSFX.playConfirm();
+    }
+
+    // 4. Lock PC
+    if (/\[TOOL:LOCK_PC\]/i.test(text) && window.electronAPI && window.electronAPI.lockPC) {
+      if (window.aceSFX) window.aceSFX.playAlert();
+      setTimeout(() => window.electronAPI.lockPC(), 800);
+    }
+
+    // 5. Screenshot
+    if (/\[TOOL:SCREENSHOT\]/i.test(text) && window.electronAPI && window.electronAPI.captureScreen) {
+      if (window.aceSFX) window.aceSFX.playConfirm();
+      window.electronAPI.captureScreen().then((res) => {
+        if (res && res.success) {
+          appendBubble(`📸 Screenshot saved: ${res.path}`, 'bot');
+        }
+      });
+    }
+
+    // Clean tags for speech synthesis
+    let cleanText = text
+      .replace(/\[TOOL:(?:OPEN|OPEN_APP|LAUNCH):.+?\]/gi, '')
+      .replace(/\[TOOL:VOLUME:.+?\]/gi, '')
+      .replace(/\[TOOL:MEDIA:.+?\]/gi, '')
+      .replace(/\[TOOL:LOCK_PC\]/gi, '')
+      .replace(/\[TOOL:SCREENSHOT\]/gi, '')
+      .replace(/\[TOOL:WEATHER:.+?\]/gi, '')
+      .replace(/\[TOOL:SEARCH:.+?\]/gi, '')
+      .trim();
+
     if (appsToOpen.length > 0) {
       cleanText += ` (Opening ${appsToOpen.join(', ')})`;
     }
     return cleanText;
   }
 
-  // 6. STREAMING OLLAMA GENERATION
+  // 6. QUICK ACTION CHIP EVENT LISTENERS
+  if (chipWeather) {
+    chipWeather.addEventListener('click', async () => {
+      if (window.aceSFX) window.aceSFX.playConfirm();
+      appendBubble("Checking weather telemetry...", 'bot');
+      if (window.electronAPI && window.electronAPI.fetchWeather) {
+        const data = await window.electronAPI.fetchWeather('');
+        if (data && data.success) {
+          const msg = `Weather for ${data.area}: ${data.tempC}°C (${data.tempF}°F), ${data.desc}. Humidity: ${data.humidity}%, Wind: ${data.windSpeedKmph} km/h.`;
+          appendBubble(`🌤️ ${msg}`, 'bot');
+          queueSpeech(msg);
+        } else {
+          appendBubble("Unable to retrieve weather telemetry at this moment.", 'bot');
+        }
+      }
+    });
+  }
+
+  if (chipVolUp) {
+    chipVolUp.addEventListener('click', () => {
+      if (window.aceSFX) window.aceSFX.playConfirm();
+      if (window.electronAPI && window.electronAPI.volumeControl) window.electronAPI.volumeControl('up');
+      appendBubble("🔊 Volume increased.", 'bot');
+    });
+  }
+
+  if (chipVolDown) {
+    chipVolDown.addEventListener('click', () => {
+      if (window.aceSFX) window.aceSFX.playConfirm();
+      if (window.electronAPI && window.electronAPI.volumeControl) window.electronAPI.volumeControl('down');
+      appendBubble("🔉 Volume decreased.", 'bot');
+    });
+  }
+
+  if (chipVolMute) {
+    chipVolMute.addEventListener('click', () => {
+      if (window.aceSFX) window.aceSFX.playConfirm();
+      if (window.electronAPI && window.electronAPI.volumeControl) window.electronAPI.volumeControl('mute');
+      appendBubble("🔇 Volume mute toggled.", 'bot');
+    });
+  }
+
+  if (chipMedia) {
+    chipMedia.addEventListener('click', () => {
+      if (window.aceSFX) window.aceSFX.playConfirm();
+      if (window.electronAPI && window.electronAPI.mediaControl) window.electronAPI.mediaControl('playpause');
+      appendBubble("⏯️ Media playback toggled.", 'bot');
+    });
+  }
+
+  if (chipScreenshot) {
+    chipScreenshot.addEventListener('click', async () => {
+      if (window.aceSFX) window.aceSFX.playConfirm();
+      if (window.electronAPI && window.electronAPI.captureScreen) {
+        const res = await window.electronAPI.captureScreen();
+        if (res && res.success) {
+          appendBubble(`📸 Screenshot captured: ${res.path}`, 'bot');
+          queueSpeech("Screenshot captured and stored.");
+        }
+      }
+    });
+  }
+
+  if (chipLock) {
+    chipLock.addEventListener('click', () => {
+      if (window.aceSFX) window.aceSFX.playAlert();
+      appendBubble("🔒 Locking workstation.", 'bot');
+      queueSpeech("Locking workstation now.");
+      setTimeout(() => {
+        if (window.electronAPI && window.electronAPI.lockPC) window.electronAPI.lockPC();
+      }, 1000);
+    });
+  }
+
+  // 7. STREAMING OLLAMA GENERATION WITH DIRECT SHORTCUTS
   async function handleUserMessage(userText) {
     if (!userText.trim()) return;
 
@@ -212,6 +378,78 @@ function startAceApp() {
     appendBubble(userText, 'user');
     textInput.value = '';
 
+    const lower = userText.toLowerCase().trim();
+
+    // Fast-path Direct Intent Detection
+    if (/^(volume\s*up|increase\s*volume|louder)/i.test(lower)) {
+      if (window.aceSFX) window.aceSFX.playConfirm();
+      if (window.electronAPI && window.electronAPI.volumeControl) window.electronAPI.volumeControl('up');
+      const reply = "Increasing system volume now.";
+      appendBubble(reply, 'bot');
+      queueSpeech(reply);
+      return;
+    }
+    if (/^(volume\s*down|decrease\s*volume|lower\s*volume|quieter)/i.test(lower)) {
+      if (window.aceSFX) window.aceSFX.playConfirm();
+      if (window.electronAPI && window.electronAPI.volumeControl) window.electronAPI.volumeControl('down');
+      const reply = "Decreasing system volume.";
+      appendBubble(reply, 'bot');
+      queueSpeech(reply);
+      return;
+    }
+    if (/^(mute|unmute|silence)/i.test(lower)) {
+      if (window.aceSFX) window.aceSFX.playConfirm();
+      if (window.electronAPI && window.electronAPI.volumeControl) window.electronAPI.volumeControl('mute');
+      const reply = "Volume mute toggled.";
+      appendBubble(reply, 'bot');
+      queueSpeech(reply);
+      return;
+    }
+    if (/^(pause|play|resume|play\s*music|pause\s*music|skip\s*song|next\s*track)/i.test(lower)) {
+      if (window.aceSFX) window.aceSFX.playConfirm();
+      const action = lower.includes('next') || lower.includes('skip') ? 'next' : 'playpause';
+      if (window.electronAPI && window.electronAPI.mediaControl) window.electronAPI.mediaControl(action);
+      const reply = action === 'next' ? "Skipping to next track." : "Toggling media playback.";
+      appendBubble(reply, 'bot');
+      queueSpeech(reply);
+      return;
+    }
+    if (/^(lock\s*(my\s*)?(pc|computer|workstation))/i.test(lower)) {
+      if (window.aceSFX) window.aceSFX.playAlert();
+      const reply = "Locking workstation immediately, sir.";
+      appendBubble(reply, 'bot');
+      queueSpeech(reply);
+      setTimeout(() => {
+        if (window.electronAPI && window.electronAPI.lockPC) window.electronAPI.lockPC();
+      }, 1000);
+      return;
+    }
+    if (/^(take\s*(a\s*)?screenshot|capture\s*(the\s*)?screen)/i.test(lower)) {
+      if (window.aceSFX) window.aceSFX.playConfirm();
+      if (window.electronAPI && window.electronAPI.captureScreen) {
+        const res = await window.electronAPI.captureScreen();
+        const reply = res && res.success ? `Screenshot saved to ${res.path}` : "Screenshot captured.";
+        appendBubble(reply, 'bot');
+        queueSpeech("Screenshot captured and saved.");
+      }
+      return;
+    }
+    if (/^(what('?s|\s+is)\s+the\s+weather|check\s+weather|weather\s+report)/i.test(lower)) {
+      if (window.aceSFX) window.aceSFX.playConfirm();
+      appendBubble("Retrieving live meteorological telemetry...", 'bot');
+      if (window.electronAPI && window.electronAPI.fetchWeather) {
+        const data = await window.electronAPI.fetchWeather('');
+        if (data && data.success) {
+          const reply = `Current conditions for ${data.area}: ${data.tempC}°C, ${data.desc}. Humidity: ${data.humidity}%.`;
+          appendBubble(`🌤️ ${reply}`, 'bot');
+          queueSpeech(reply);
+          return;
+        }
+      }
+    }
+
+    // Default: Local LLM Processing via Ollama
+    if (window.aceSFX) window.aceSFX.playThinking();
     avatar.setAgentState('thinking');
 
     const botBubble = appendBubble('', 'bot');
@@ -225,13 +463,21 @@ REAL LAPTOP TELEMETRY:
 - Free Disk Space: ${realTelemetry.FreeDiskGB} GB
 - Local Time: ${realTelemetry.Time}
 
-CAPABILITIES & MULTI-APP LAUNCHING:
-You can launch ANY application, program, game, website, or tool on Windows.
-You can open MULTIPLE applications simultaneously! For each application to open, include [TOOL:OPEN:app_name].
+CAPABILITIES & OS TOOLS:
+You can control Windows, launch applications, adjust volume, control media, take screenshots, lock PC, and check weather.
+When the user asks you to perform an action, append the appropriate tool tags:
+- Applications: [TOOL:OPEN:app_name] (e.g. [TOOL:OPEN:chrome] [TOOL:OPEN:spotify])
+- Volume: [TOOL:VOLUME:up], [TOOL:VOLUME:down], [TOOL:VOLUME:mute]
+- Media playback: [TOOL:MEDIA:playpause], [TOOL:MEDIA:next], [TOOL:MEDIA:prev]
+- Security: [TOOL:LOCK_PC]
+- Screenshot: [TOOL:SCREENSHOT]
+
 Examples:
 - "Open Chrome and Spotify": "Right away. Opening Chrome and Spotify now. [TOOL:OPEN:chrome] [TOOL:OPEN:spotify]"
-- "Launch Calculator, Notepad, and YouTube": "Executing now. [TOOL:OPEN:calc] [TOOL:OPEN:notepad] [TOOL:OPEN:youtube]"
-- "Open VS Code and Terminal": "On it. [TOOL:OPEN:code] [TOOL:OPEN:terminal]"
+- "Mute volume": "Muting system audio now. [TOOL:VOLUME:mute]"
+- "Pause the music": "Pausing playback. [TOOL:MEDIA:playpause]"
+- "Take a screenshot": "Capturing screen. [TOOL:SCREENSHOT]"
+- "Lock my PC": "Locking workstation. [TOOL:LOCK_PC]"
 
 Be concise, witty, loyal, and articulate like ACE AI (1-2 sentences). Address the user with respect (e.g. "sir").`;
 
@@ -272,7 +518,7 @@ Be concise, witty, loyal, and articulate like ACE AI (1-2 sentences). Address th
               dialogueContainer.scrollTop = dialogueContainer.scrollHeight;
 
               if (/[.!?\n]/.test(token) && sentenceBuffer.trim().length > 8) {
-                const cleanedSentence = executeToolsInText(sentenceBuffer);
+                const cleanedSentence = await executeToolsInText(sentenceBuffer);
                 queueSpeech(cleanedSentence);
                 sentenceBuffer = '';
               }
@@ -282,13 +528,13 @@ Be concise, witty, loyal, and articulate like ACE AI (1-2 sentences). Address th
       }
 
       if (sentenceBuffer.trim().length > 0) {
-        const cleanedSentence = executeToolsInText(sentenceBuffer);
+        const cleanedSentence = await executeToolsInText(sentenceBuffer);
         queueSpeech(cleanedSentence);
       }
 
     } catch (err) {
       console.error('Generation error:', err);
-      const fallback = "Systems experiencing interference connecting to local neural core.";
+      const fallback = "Neural core offline. Local fallback operating system active.";
       botBubble.textContent = fallback;
       queueSpeech(fallback);
     }
@@ -314,6 +560,7 @@ Be concise, witty, loyal, and articulate like ACE AI (1-2 sentences). Address th
   });
 
   setTimeout(() => {
+    if (window.aceSFX) window.aceSFX.playActivation();
     queueSpeech("At your service, sir. Real hardware telemetry connected. All systems nominal.");
   }, 1000);
 }

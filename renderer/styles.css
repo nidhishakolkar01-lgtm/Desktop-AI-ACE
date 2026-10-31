@@ -1,4 +1,4 @@
-﻿* {
+* {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -181,8 +181,8 @@ body, html {
 /* Bottom Center Dock */
 .bottom-dock {
   align-self: center;
-  width: 580px;
-  max-width: 90vw;
+  width: 650px;
+  max-width: 92vw;
   background: rgba(12, 16, 24, 0.75);
   backdrop-filter: blur(24px);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -228,6 +228,47 @@ body, html {
   background: #ff7700;
   border-radius: 2px;
   transition: height 0.1s ease;
+}
+
+.quick-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.quick-actions::-webkit-scrollbar {
+  display: none;
+}
+
+.action-chip {
+  background: rgba(18, 24, 38, 0.65);
+  border: 1px solid rgba(255, 119, 0, 0.25);
+  color: #cfd8e3;
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 5px 9px;
+  border-radius: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+}
+
+.action-chip:hover {
+  background: rgba(255, 119, 0, 0.20);
+  border-color: #ff7700;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 119, 0, 0.25);
+}
+
+.action-chip:active {
+  transform: translateY(1px);
 }
 
 .input-row {
